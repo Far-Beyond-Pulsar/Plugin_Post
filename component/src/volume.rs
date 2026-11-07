@@ -5,9 +5,8 @@
 
 use engine_class_derive::{engine_class, register_world_component};
 use helio_component::LensFlareProps;
-use helio_pass_postprocess::{
-    ExposureMode as HelioExposureMode, PostProcessSettings, PostProcessVolumeDescriptor,
-};
+use helio_pass_post_volumes::PostProcessVolumeDescriptor;
+use helio_pass_postprocess::{ExposureMode as HelioExposureMode, PostProcessSettings};
 use helio_pass_postprocess::{
     HdrOutputMode as HelioHdrOutputMode, TonemapOperator as HelioTonemapOperator,
 };

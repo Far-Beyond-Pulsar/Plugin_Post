@@ -22,8 +22,7 @@ pub struct PostProcessVolumeComponent {
     /// Zero means "inactive" -- `postprocess.wgsl`'s `cs_volume_blend`
     /// skips a row with `blend_weight <= 0.0` before ever evaluating its
     /// (otherwise degenerate, all-zero) bounds, which is what makes an
-    /// unused row safely inert. See `MAX_PP_VOLUMES`'s doc (helio-pass-
-    /// postprocess) for the fixed-capacity iteration this enables.
+    /// unused row safely inert. See [`crate::MAX_PP_VOLUMES`]'s doc for the fixed-capacity iteration this enables.
     #[gpu]
     pub blend_weight: f32,
     #[gpu]
@@ -73,13 +72,13 @@ pub struct CameraPostProcessComponent {
 
 same_layout!(CameraPostProcessComponent, crate::CameraPostProcessRow, crate::CAMERA_POSTPROCESS, "camera_postprocess"; view_id, enabled, _pad0, _pad1, settings);
 
-impl From<helio_pass_postprocess::GpuPostProcessVolume> for PostProcessVolumeComponent {
-    fn from(value: helio_pass_postprocess::GpuPostProcessVolume) -> Self {
+impl From<crate::GpuPostProcessVolume> for PostProcessVolumeComponent {
+    fn from(value: crate::GpuPostProcessVolume) -> Self {
         crate::PostProcessVolumeRow::from(value).into()
     }
 }
 
-impl From<PostProcessVolumeComponent> for helio_pass_postprocess::GpuPostProcessVolume {
+impl From<PostProcessVolumeComponent> for crate::GpuPostProcessVolume {
     fn from(value: PostProcessVolumeComponent) -> Self {
         crate::PostProcessVolumeRow::from(value).into()
     }

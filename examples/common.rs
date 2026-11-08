@@ -202,7 +202,7 @@ pub fn spawn_sky(world: &mut World, tint: [f32; 3]) -> Entity {
 /// `helio_pass_post_volumes::host_rows::PostProcessVolumeComponent` the pass reads).
 pub fn spawn_post_process_volume(
     world: &mut World,
-    descriptor: helio_pass_postprocess::PostProcessVolumeDescriptor,
+    descriptor: helio_pass_post_volumes::PostProcessVolumeDescriptor,
 ) -> Entity {
     let entity = world.spawn();
     world.insert(

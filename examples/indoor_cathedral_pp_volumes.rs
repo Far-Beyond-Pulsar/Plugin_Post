@@ -28,7 +28,8 @@ use helio::{
 };
 use helio_bake::BakeConfig;
 use helio_pass_perf_overlay::PerfOverlayMode;
-use helio_pass_postprocess::{PostProcessSettings, PostProcessVolumeDescriptor};
+use helio_pass_post_volumes::PostProcessVolumeDescriptor;
+use helio_pass_postprocess::PostProcessSettings;
 use pulsar_scenedb::{Entity, SceneDb};
 
 use std::io::{self, BufRead};

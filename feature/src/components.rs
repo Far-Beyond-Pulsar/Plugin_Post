@@ -4,7 +4,7 @@
 //! blend weight, and every exposure/tonemap/fog/color-grading knob) authors
 //! exactly one packed row here -- there is no separate "settings" component,
 //! the whole editor property set is this one GPU-facing struct, field for
-//! field identical to `helio_pass_postprocess::GpuPostProcessVolume`'s ABI.
+//! field identical to `crate::GpuPostProcessVolume`'s ABI.
 
 #[derive(bytemuck::Pod, bytemuck::Zeroable, Clone, Copy, Debug, PartialEq)]
 #[repr(C)]
@@ -16,8 +16,7 @@ pub struct PostProcessVolumeRow {
     /// Zero means "inactive" -- `postprocess.wgsl`'s `cs_volume_blend`
     /// skips a row with `blend_weight <= 0.0` before ever evaluating its
     /// (otherwise degenerate, all-zero) bounds, which is what makes an
-    /// unused row safely inert. See `MAX_PP_VOLUMES`'s doc (helio-pass-
-    /// postprocess) for the fixed-capacity iteration this enables.
+    /// unused row safely inert. See [`crate::MAX_PP_VOLUMES`]'s doc for the fixed-capacity iteration this enables.
     pub blend_weight: f32,
     pub unbound: u32,
     /// `PostProcessProperty` override bits, words 0..3 (`vec4<u32>` in WGSL).
@@ -47,12 +46,12 @@ const _: () = assert!(
         == std::mem::size_of::<helio_pass_postprocess::GpuPostProcessUniforms>()
 );
 
-impl From<helio_pass_postprocess::GpuPostProcessVolume> for PostProcessVolumeRow {
-    fn from(v: helio_pass_postprocess::GpuPostProcessVolume) -> Self {
+impl From<crate::GpuPostProcessVolume> for PostProcessVolumeRow {
+    fn from(v: crate::GpuPostProcessVolume) -> Self {
         bytemuck::cast(v)
     }
 }
-impl From<PostProcessVolumeRow> for helio_pass_postprocess::GpuPostProcessVolume {
+impl From<PostProcessVolumeRow> for crate::GpuPostProcessVolume {
     fn from(v: PostProcessVolumeRow) -> Self {
         bytemuck::cast(v)
     }
@@ -76,7 +75,7 @@ mod tests {
         );
         assert_eq!(camera.view_id, 3);
 
-        let mut descriptor = helio_pass_postprocess::PostProcessVolumeDescriptor::default();
+        let mut descriptor = crate::PostProcessVolumeDescriptor::default();
         descriptor.settings = settings;
         descriptor.override_mask = [1, 2, 3, 4];
         let row = PostProcessVolumeRow::from(descriptor.to_gpu());
@@ -89,7 +88,7 @@ mod tests {
             ],
             [1, 2, 3, 4]
         );
-        let back = helio_pass_postprocess::GpuPostProcessVolume::from(row);
+        let back = crate::GpuPostProcessVolume::from(row);
         assert_eq!(bytemuck::bytes_of(&back.settings), bytemuck::bytes_of(&gpu));
     }
 
@@ -101,7 +100,7 @@ mod tests {
         // structs' internal shapes differ (nested struct vs. flat `u32`s).
         assert_eq!(
             std::mem::size_of::<PostProcessVolumeRow>(),
-            std::mem::size_of::<helio_pass_postprocess::GpuPostProcessVolume>()
+            std::mem::size_of::<crate::GpuPostProcessVolume>()
         );
     }
 }

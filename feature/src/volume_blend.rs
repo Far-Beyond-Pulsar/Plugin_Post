@@ -109,7 +109,7 @@ fn camera_row_enables_bloom(row: &[u8]) -> bool {
 /// volume can only select between its own value and the baseline's, so one
 /// that overrides bloom off never enables it.
 fn volume_row_enables_bloom(row: &[u8]) -> bool {
-    use helio_pass_postprocess::GpuPostProcessVolume as V;
+    use crate::GpuPostProcessVolume as V;
     const PROPERTY: usize = 9;
     let weight = read_f32(row, std::mem::offset_of!(V, blend_weight));
     let mask = read_u32(
@@ -141,7 +141,7 @@ fn camera_row_enables_auto_exposure(row: &[u8]) -> bool {
 /// mode other than manual. Like bloom, a volume only selects between its own
 /// mode and the baseline's.
 fn volume_row_enables_auto_exposure(row: &[u8]) -> bool {
-    use helio_pass_postprocess::GpuPostProcessVolume as V;
+    use crate::GpuPostProcessVolume as V;
     const PROPERTY: usize = 0;
     let weight = read_f32(row, std::mem::offset_of!(V, blend_weight));
     let mask = read_u32(
@@ -238,7 +238,7 @@ impl PostProcessVolumeBlendPass {
             ),
             fallback_pp_volumes: buffer(
                 "PostProcess Empty Volumes",
-                std::mem::size_of::<helio_pass_postprocess::GpuPostProcessVolume>() as u64,
+                std::mem::size_of::<crate::GpuPostProcessVolume>() as u64,
                 wgpu::BufferUsages::STORAGE,
             ),
             fallback_cameras: buffer(
@@ -405,7 +405,8 @@ impl RenderPass for PostProcessVolumeBlendPass {
 mod activity_tests {
     use super::*;
     use crate::CameraPostProcessRow;
-    use helio_pass_postprocess::{GpuPostProcessVolume, PostProcessSettings};
+    use crate::GpuPostProcessVolume;
+    use helio_pass_postprocess::PostProcessSettings;
 
     #[test]
     fn bloom_camera_rows() {

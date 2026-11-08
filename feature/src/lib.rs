@@ -9,12 +9,17 @@ pub mod feature;
 pub mod host_rows;
 pub mod scene_rows;
 pub use scene_rows::PostRowSources;
+pub mod volume;
 mod volume_blend;
 
 pub use components::{
     CameraPostProcessRow, PostProcessVolumeRow, CAMERA_POSTPROCESS, POST_PROCESS_VOLUMES,
 };
 pub use feature::PostVolumesFeature;
+pub use volume::{
+    volume_weight, GpuPostProcessVolume, PostProcessBlender, PostProcessVolumeDescriptor,
+    MAX_PP_VOLUMES,
+};
 pub use volume_blend::{shader as volume_blend_shader, PostProcessVolumeBlendPass};
 
 #[cfg(test)]

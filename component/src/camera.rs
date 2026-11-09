@@ -2,7 +2,7 @@
 //! resolve as its derived row ([`crate::CameraPostProcessSourceRow`]) through
 //! the plugin's row join.
 use crate::PostProcessSettingsProps;
-use engine_class_derive::{engine_class, register_world_component};
+use engine_class_derive::{engine_class, world_component};
 
 pub const CAMERA_POST_PROCESS_CLASS_NAME: &str = "CameraPostProcessComponent";
 
@@ -30,5 +30,6 @@ impl Default for CameraPostProcessComponent {
     }
 }
 
-#[register_world_component]
+// The plugin's root crate registers the class.
+#[world_component]
 impl CameraPostProcessComponent {}

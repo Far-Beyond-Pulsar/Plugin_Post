@@ -9,18 +9,14 @@
 //!   [`CameraPostProcessSourceRow`]): the pass rows SceneDB derives from the
 //!   authored values; the plugin's row join places a volume at its owner
 //!   (`helio_pass_post_volumes::scene_rows`).
-//! - The registrations of the plugin's Helio feature
-//!   (`helio_pass_post_volumes::PostVolumesFeature`: the blend that
-//!   publishes the frame's post settings) and its scene rows with the engine.
+//! - The plugin's Helio feature ([`render_features`]:
+//!   `helio_pass_post_volumes::PostVolumesFeature`, the blend that
+//!   publishes the frame's post settings) and its scene rows
+//!   ([`register_columns`], [`derivation`]).
 //!
-//! Everything registers through `inventory` once the crate is linked: hosts link it
-//! without naming it (a game built for a project links the runtime modules
-//! of the plugins its `Pulsar.toml` enables, the editor every installed
-//! plugin through `installed_plugins`; `pulsar_plugins`) and know no post-process type.
-
-// The plugin's descriptor (`../pulsar-plugin.toml`): linking this crate
-// installs the plugin; a project enables it or not (`pulsar_plugins`).
-pulsar_plugins::installed!("../pulsar-plugin.toml");
+//! This crate registers nothing itself: the plugin's root crate
+//! (`post_plugin`) submits the component classes, the scene rows and the
+//! feature, in one place.
 
 pub mod camera;
 pub mod volume;
@@ -146,12 +142,14 @@ derived_row!(
     camera_clear
 );
 
-fn register_columns(store: &mut SceneGpuStore, device: &std::sync::Arc<wgpu::Device>) {
+/// Registers the source rows' SceneDB columns the row join reads.
+pub fn register_columns(store: &mut SceneGpuStore, device: &std::sync::Arc<wgpu::Device>) {
     PostProcessVolumeSourceRow::register_gpu_columns_growable(store, 16, device);
     CameraPostProcessSourceRow::register_gpu_columns_growable(store, 4, device);
 }
 
-fn derivation(
+/// The plugin's row join over the engine's rows (`scene_rows`).
+pub fn derivation(
     device: &wgpu::Device,
     keys: helio_scene_join::RowJoinKeys,
 ) -> Box<dyn helio_scene_join::SceneDerivation> {
@@ -169,25 +167,9 @@ fn derivation(
     ))
 }
 
-inventory::submit! {
-    engine_backend::scene::helio_bridge::SceneRowsRegistration {
-        origin: pulsar_plugins::origin!(),
-        register_columns,
-        derivation,
-    }
-}
-
 /// The volumes' feature: the blend that resolves the frame's post settings.
-fn render_features() -> helio_feature_api::FeatureSet {
+pub fn render_features() -> helio_feature_api::FeatureSet {
     helio_feature_api::FeatureSet::new().with(helio_pass_post_volumes::PostVolumesFeature)
-}
-
-inventory::submit! {
-    engine_backend::subsystems::render::RenderFeatureRegistration {
-        origin: pulsar_plugins::origin!(),
-        features: render_features,
-        configure: |config| config,
-    }
 }
 
 #[cfg(test)]
@@ -242,16 +224,5 @@ mod tests {
             &bytemuck::bytes_of(&pass)[32..]
         );
         assert_eq!(row.size[..3], volume.size);
-    }
-
-    #[test]
-    fn registers_its_feature() {
-        let features =
-            engine_backend::subsystems::render::helio_renderer::render_features::plugin_features();
-        assert!(
-            features.ids().contains(&"helio.post_volumes"),
-            "features: {:?}",
-            features.ids()
-        );
     }
 }

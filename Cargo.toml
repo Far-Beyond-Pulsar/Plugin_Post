@@ -1,0 +1,41 @@
+[package]
+name = "post_plugin"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "Post-Process Volumes (`pulsar.post`): the plugin's root crate, the one place it registers everything it contributes (runtime registrations always, the editor's with `editor`)"
+# `examples/` is the plugin's examples crate, not this package's examples.
+autoexamples = false
+
+[features]
+# The editor's registrations (the environment mixer's post-process volume) and the crates they need. A game
+# links the root without it, so it takes no editor dependency.
+editor = ["dep:post_editor", "dep:ui_level_editor"]
+
+[dependencies]
+# The plugin gate and the registrations' collection.
+pulsar_plugins = { workspace = true }
+inventory = { workspace = true }
+# The plugin's crates.
+post_component = { workspace = true }
+post_editor = { workspace = true, optional = true }
+# The engine seams the plugin registers into.
+engine_backend = { path = "../../../crates/core/engine_backend", default-features = false, features = ["render"] }
+pulsar_world_registry = { workspace = true }
+# The editor's extension points.
+ui_level_editor = { workspace = true, optional = true }
+
+[dev-dependencies]
+# The plugin's integration tests (`tests/`): the plugin as a game links it.
+pollster = "=0.4.0"
+glam = { workspace = true }
+helio = { workspace = true }
+helio-core = { workspace = true }
+helio-pass-post-volumes = { workspace = true }
+helio-scene-join = { workspace = true }
+pulsar_scenedb = { workspace = true }
+bytemuck = { workspace = true }
+wgpu = { workspace = true }
+
+[lints]
+workspace = true

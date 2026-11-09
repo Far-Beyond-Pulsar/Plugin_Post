@@ -182,7 +182,7 @@ impl ApplicationHandler for App {
         let mut renderer = RendererBuilder::new(config, scene_db_handle(&scene_db))
             .with_editor_mode(true)
             .with_graph(helio_mesh_host::presets::with(
-                helio_presets::Preset::HlfsFxaa,
+                helio_presets::Preset::Model(helio_light_host::HLFS_FXAA),
                 &common::features(),
             ))
             .build_with_graphics_context(&mut graphics)

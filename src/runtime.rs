@@ -21,7 +21,7 @@ inventory::submit! {
         origin: pulsar_plugins::origin!(),
         name: "post.rows",
         register_columns: post_component::register_columns,
-        derivation: post_component::derivation,
+        derivation: Some(post_component::derivation),
     }
 }
 

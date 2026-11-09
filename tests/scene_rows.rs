@@ -4,6 +4,9 @@
 //! read back from the join's output. Needs a GPU adapter (lavapipe works);
 //! skips without one.
 
+// The plugin as a game links it: its root, with every registration.
+use post_plugin as _;
+
 use std::sync::Arc;
 
 use engine_backend::scene::{SceneWorldExt, SpawnObject, Transform, Visibility, attachments};

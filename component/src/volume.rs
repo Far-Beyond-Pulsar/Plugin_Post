@@ -3,7 +3,7 @@
 //! placed by the plugin's row join with the owner's transform; camera
 //! settings reuse PostProcessSettingsProps.
 
-use engine_class_derive::{engine_class, register_world_component};
+use engine_class_derive::{engine_class, world_component};
 use helio_component::LensFlareProps;
 use helio_pass_post_volumes::PostProcessVolumeDescriptor;
 use helio_pass_postprocess::{ExposureMode as HelioExposureMode, PostProcessSettings};
@@ -651,7 +651,8 @@ impl PostProcessVolumeComponent {
     }
 }
 
-#[register_world_component]
+// The plugin's root crate registers the class.
+#[world_component]
 impl PostProcessVolumeComponent {}
 
 #[cfg(test)]

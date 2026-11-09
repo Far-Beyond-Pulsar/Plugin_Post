@@ -19,13 +19,16 @@ draw phases and api crates.
 
 | Crate | Path | What |
 |---|---|---|
-| `post_component` | `component/` | Post-process volumes (pulsar.post): the post-process volume and camera baseline components, their rows and the registrations of the plugin's Helio feature (the volume blend) |
-| `post_plugin` | `editor/` | Post-Process Volumes (pulsar.post): the editor plugin -- its metadata, over the plugin's component crate |
+| `post_plugin` | `./` (`src/`) | The plugin's root crate: the one place it registers everything it contributes (`src/runtime.rs`; `src/editor.rs` with the `editor` feature). Its integration tests are in `tests/`. |
+| `post_component` | `component/` | Post-process volumes (pulsar.post): the post-process volume and camera baseline components, their rows, their row join and the plugin's Helio feature set (the volume blend) |
+| `post_editor` | `editor/` | Post-Process Volumes (pulsar.post): the editor crate -- the environment mixer's post-process volume entry |
 | `post-examples` | `examples/` | The post plugin's standalone hosts on Helio: the cathedral post-process volume showcase |
 | `helio-pass-post-volumes` | `feature/` | Post-process volumes as a Helio feature: the camera and volume rows and the pass that blends them into the frame's post settings, which the tone map reads. |
 
-- **Runtime module** (what a game built for a project links): `post_component`.
-- **Editor module** (what the editor links in addition): `post_plugin`.
+- **Root crate** `post_plugin`: the only crate that registers anything (the
+  component classes, their scene rows, the Helio feature; with `editor`, the
+  environment mixer's post-process volume). A game links it without
+  `editor`; the editor links it with. Other plugins never depend on it.
 - **Requires**: nothing. A project enables or disables the plugin in its
   `Pulsar.toml` (`[plugins]`); disabled, the kind is absent and the frame
   draws without it.
@@ -43,8 +46,8 @@ only inside a Pulsar-Native checkout:
 ```bash
 git clone --recursive https://github.com/Far-Beyond-Pulsar/Pulsar-Native
 cd Pulsar-Native
-cargo check -p post_component -p post_plugin -p post-examples -p helio-pass-post-volumes --tests
-cargo test -p post_component -p helio-pass-post-volumes
+cargo check -p post_component -p post_editor -p post_plugin --features post_plugin/editor -p post-examples -p helio-pass-post-volumes --tests
+cargo test -p post_component -p post_plugin -p helio-pass-post-volumes
 ```
 
 Suites that render real frames need a GPU; CI leaves them out by name

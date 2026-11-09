@@ -1,25 +1,17 @@
 [package]
-name = "post_plugin"
+name = "post_editor"
 version = "0.1.0"
 edition = "2024"
-description = "Post-Process Volumes (pulsar.post): the editor plugin -- its metadata, over the plugin's component crate"
+description = "Post-Process Volumes (pulsar.post): the editor crate -- the environment mixer's post-process volume entry, over the plugin's component crate"
 
 [lib]
-name = "post_plugin"
-
-[features]
-# Statically linked hosts (the editor) use the Rust API; the component crate
-# (with everything it registers) comes with this crate.
-builtin = []
+name = "post_editor"
 
 [dependencies]
 post_component = { workspace = true }
-plugin_editor_api = { workspace = true }
-# The level editor UI: registrations through its extension points
-# (`ui_level_editor::extend`), each naming its origin.
+# The level editor UI the root registers through its extension points
+# (`ui_level_editor::extend`).
 ui_level_editor = { workspace = true }
-inventory = { workspace = true }
-pulsar_plugins = { workspace = true }
 
 [lints]
 workspace = true

@@ -19,9 +19,11 @@
 //! feature, in one place.
 
 pub mod camera;
+pub mod lens_flare;
 pub mod volume;
 
 pub use camera::*;
+pub use lens_flare::*;
 pub use volume::*;
 
 use pulsar_scenedb::gpu::{GpuMirrorHandle, SceneGpuStore};

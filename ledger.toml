@@ -1,0 +1,170 @@
+# The post plugin's rows of the SceneDB closure ledger (Pulsar-Native#1035):
+# its classes, GPU schemas, buffers, pass crates and call sites. A plugin owns
+# the rows of what it ships (Pulsar-Native#1606); `cargo test -p scene_inventory`
+# in a Pulsar-Native checkout recomputes every fact column, checks the human
+# columns, and fails on a missing, stale or misplaced row. The columns are
+# described in Pulsar-Native's crates/core/scene_inventory/ledger.toml.
+
+# ── Exposed component classes ───────────────────────────────────
+
+[[class]]
+name = "CameraPostProcessComponent"
+category = "Rendering"
+world_registered = true
+own_gpu_columns = true
+owner = "post_component::camera"
+disposition = "render, Phase 4. Its derived source row is written on every insert, write, removal and replay; the environment join gates and places it into camera_postprocess, which post-processing reads. The behavior no longer queues rows"
+target_contract = "Phase 4; 09-component-structure-and-graph-boundary.md"
+test = "plugins/vendor/fog/tests/scene_rows.rs; plugins/installed/tests/render_acceptance.rs (environment_components_reach_the_frame)"
+status = "verified"
+
+[[class]]
+name = "PostProcessVolumeComponent"
+category = "Rendering"
+world_registered = true
+own_gpu_columns = true
+owner = "post_component::volume"
+disposition = "render, Phase 4. Its derived source row is written on every insert, write, removal and replay; the environment join gates and places it into post_process_volumes, which post-processing reads. The behavior no longer queues rows"
+target_contract = "Phase 4; 09-component-structure-and-graph-boundary.md"
+test = "plugins/vendor/fog/tests/scene_rows.rs; plugins/installed/tests/render_acceptance.rs (environment_components_reach_the_frame)"
+status = "verified"
+
+# ── GPU-bearing schemas ─────────────────────────────────────────
+
+[[schema]]
+type = "CameraPostProcessComponentGpuMirror"
+path = "post_component::camera::CameraPostProcessComponentGpuMirror"
+buffers = []
+clears_on_remove = true
+releases_var_len = false
+registered = false
+writer = "none: the generated companion uploads a GPU row only for an #[engine_class(gpu_rows)] class (Phase 4); no engine class opts in"
+owner = "post_component::camera"
+disposition = "keep as a CPU mapping type (LightComponent's derived LightSourceRow is built from its mirror); nothing is uploaded"
+target_contract = "Phase 1; 03-gpu-reflection-and-rendering.md"
+test = "crates/core/engine_class_derive/tests/gpu_mirror_derive.rs (without_gpu_rows_the_companion_uploads_nothing)"
+status = "verified"
+
+[[schema]]
+type = "PostProcessVolumeComponentGpuMirror"
+path = "post_component::volume::PostProcessVolumeComponentGpuMirror"
+buffers = []
+clears_on_remove = true
+releases_var_len = false
+registered = false
+writer = "none: the generated companion uploads a GPU row only for an #[engine_class(gpu_rows)] class (Phase 4); no engine class opts in"
+owner = "post_component::volume"
+disposition = "keep as a CPU mapping type (LightComponent's derived LightSourceRow is built from its mirror); nothing is uploaded"
+target_contract = "Phase 1; 03-gpu-reflection-and-rendering.md"
+test = "crates/core/engine_class_derive/tests/gpu_mirror_derive.rs (without_gpu_rows_the_companion_uploads_nothing)"
+status = "verified"
+
+[[schema]]
+type = "CameraPostProcessComponent"
+path = "post_component::camera::CameraPostProcessComponent"
+buffers = ["camera_postprocess"]
+clears_on_remove = true
+releases_var_len = false
+registered = false
+writer = "the authored value's SceneDB GPU dispatch is its derived CameraPostProcessSourceRow (environment_rows), on every insert, write, removal and replay; the generated companion uploads nothing (Phase 4)"
+owner = "post_component::camera"
+disposition = "keep: the authored type's GPU row is CameraPostProcessSourceRow, the environment join's input"
+target_contract = "Phase 4; 09-component-structure-and-graph-boundary.md"
+test = "plugins/vendor/fog/tests/scene_rows.rs"
+status = "verified"
+
+[[schema]]
+type = "PostProcessVolumeComponent"
+path = "post_component::volume::PostProcessVolumeComponent"
+buffers = ["post_process_volumes"]
+clears_on_remove = true
+releases_var_len = false
+registered = false
+writer = "the authored value's SceneDB GPU dispatch is its derived PostProcessVolumeSourceRow (environment_rows), on every insert, write, removal and replay; the generated companion uploads nothing (Phase 4)"
+owner = "post_component::volume"
+disposition = "keep: the authored type's GPU row is PostProcessVolumeSourceRow, the environment join's input"
+target_contract = "Phase 4; 09-component-structure-and-graph-boundary.md"
+test = "plugins/vendor/fog/tests/scene_rows.rs"
+status = "verified"
+
+[[schema]]
+type = "PostProcessVolumeSourceRow"
+path = "post_component::PostProcessVolumeSourceRow"
+buffers = ["post_process_volume_sources"]
+clears_on_remove = true
+releases_var_len = false
+registered = true
+writer = "PostProcessVolumeComponent's derived GPU registration (the volume size, then the pass row after its bounds (zeroed params when disabled); placed by the join), on every insert, write, removal and replay"
+owner = "post_component"
+disposition = "keep: the environment join's post_process_volumes input (Phase 4)"
+target_contract = "Phase 4; 09-component-structure-and-graph-boundary.md"
+test = "plugins/vendor/fog/tests/scene_rows.rs"
+status = "verified"
+
+[[schema]]
+type = "CameraPostProcessSourceRow"
+path = "post_component::CameraPostProcessSourceRow"
+buffers = ["camera_postprocess_sources"]
+clears_on_remove = true
+releases_var_len = false
+registered = true
+writer = "CameraPostProcessComponent's derived GPU registration (the pass camera row, enabled from the authored flag), on every insert, write, removal and replay"
+owner = "post_component"
+disposition = "keep: the environment join's camera_postprocess input (Phase 4)"
+target_contract = "Phase 4; 09-component-structure-and-graph-boundary.md"
+test = "plugins/vendor/fog/tests/scene_rows.rs"
+status = "verified"
+
+# ── GPU buffer keys ─────────────────────────────────────────────
+
+[[buffer]]
+key = "camera_postprocess"
+producers = ["CameraPostProcessComponent"]
+consumers = ["helio-pass-post-volumes"]
+owner = "helio-scene-derivations environment join (execution output, one row per component instance)"
+disposition = "keep: the join copies each placed, enabled CameraPostProcessComponent row; the editor baseline is the resolver's defaults (EditorPostProcess), not a scene row"
+target_contract = "Phase 4; 09-component-structure-and-graph-boundary.md"
+test = "plugins/vendor/fog/tests/scene_rows.rs; plugins/installed/tests/render_acceptance.rs (environment_components_reach_the_frame); crates/core/engine_backend/tests/editor_bloom_toggle.rs"
+status = "verified"
+
+[[buffer]]
+key = "post_process_volumes"
+producers = ["PostProcessVolumeComponent"]
+consumers = ["helio-pass-post-volumes"]
+owner = "helio-scene-derivations environment join (execution output, one row per component instance)"
+disposition = "keep: the join places each volume from its owner's transform; the post-process resolver reads it (fog reads its own media rows since p17)"
+target_contract = "Phase 4; 09-component-structure-and-graph-boundary.md"
+test = "plugins/vendor/fog/tests/scene_rows.rs; plugins/installed/tests/render_acceptance.rs (environment_components_reach_the_frame)"
+status = "verified"
+
+[[buffer]]
+key = "post_process_volume_sources"
+producers = ["PostProcessVolumeSourceRow"]
+consumers = []
+owner = "helio_component::components::environment_rows"
+disposition = "keep: PostProcessVolumeComponent in its owner's space, derived on every write; the environment join reads it into post_process_volumes"
+target_contract = "Phase 4; 09-component-structure-and-graph-boundary.md"
+test = "plugins/vendor/fog/tests/scene_rows.rs"
+status = "verified"
+
+[[buffer]]
+key = "camera_postprocess_sources"
+producers = ["CameraPostProcessSourceRow"]
+consumers = []
+owner = "helio_component::components::environment_rows"
+disposition = "keep: CameraPostProcessComponent in its owner's space, derived on every write; the environment join reads it into camera_postprocess"
+target_contract = "Phase 4; 09-component-structure-and-graph-boundary.md"
+test = "plugins/vendor/fog/tests/scene_rows.rs"
+status = "verified"
+
+# ── Render pass crates ──────────────────────────────────────────
+
+[[pass]]
+crate = "helio-pass-post-volumes"
+in_default_graph = false
+reads = ["camera_postprocess", "post_process_volumes"]
+owner = "helio-pass-post-volumes"
+disposition = "keep: the kind's own, moved with it into its plugin (plugin-migration.md Phases B and C)"
+target_contract = "Phase C; plugin-migration.md"
+test = "none: no test names this row; the owning plugin's suites cover its behaviour"
+status = "unverified"

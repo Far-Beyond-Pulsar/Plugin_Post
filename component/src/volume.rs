@@ -3,8 +3,8 @@
 //! placed by the plugin's row join with the owner's transform; camera
 //! settings reuse PostProcessSettingsProps.
 
+use crate::lens_flare::LensFlareProps;
 use engine_class_derive::{engine_class, world_component};
-use helio_component::LensFlareProps;
 use helio_pass_post_volumes::PostProcessVolumeDescriptor;
 use helio_pass_postprocess::{ExposureMode as HelioExposureMode, PostProcessSettings};
 use helio_pass_postprocess::{
@@ -15,20 +15,17 @@ use serde::{Deserialize, Serialize};
 
 pub const POST_PROCESS_VOLUME_CLASS_NAME: &str = "PostProcessVolumeComponent";
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Reflectable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Reflectable, Default)]
 pub enum ExposureMode {
+    #[default]
     Manual,
     Auto,
 }
-impl Default for ExposureMode {
-    fn default() -> Self {
-        Self::Manual
-    }
-}
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Reflectable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Reflectable, Default)]
 pub enum TonemapOperator {
     /// Skip tonemapping entirely.
+    #[default]
     None,
     Aces,
     Filmic,
@@ -40,15 +37,11 @@ pub enum TonemapOperator {
     /// AgX with its punchy look: more contrast and saturation.
     AgxPunchy,
 }
-impl Default for TonemapOperator {
-    fn default() -> Self {
-        Self::None
-    }
-}
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Reflectable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Reflectable, Default)]
 pub enum HdrOutputMode {
     /// Tonemap → sRGB (standard display).
+    #[default]
     Ldr,
     /// Tonemap → PQ ST 2084 → BT.2020 → 10-bit.
     Hdr10,
@@ -56,11 +49,6 @@ pub enum HdrOutputMode {
     ScRgb,
     /// Raw HDR float, no tonemap (external grading/recording).
     Passthrough,
-}
-impl Default for HdrOutputMode {
-    fn default() -> Self {
-        Self::Ldr
-    }
 }
 
 /// A post-process settings volume, centered on the owning object.

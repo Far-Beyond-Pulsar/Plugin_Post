@@ -4,11 +4,12 @@
 use post_editor::level_editor;
 use ui_level_editor::extend::{CreateEntry, EnvironmentListing};
 
-// ── Environment mixer ───────────────────────────────────────────────────────
+/// Everything the post-process plugin registers for the editor.
+pub(crate) fn build(p: &mut pulsar_plugins::PluginBuilder) {
+    // ── Environment mixer ───────────────────────────────────────────────────
 
-inventory::submit! {
-    CreateEntry {
-        origin: pulsar_plugins::origin!(),
+    p.add(CreateEntry {
+        origin: p.origin(),
         id: "environment_post_process_volume",
         menu_label: None,
         environment_label: Some("Post Process"),
@@ -16,15 +17,13 @@ inventory::submit! {
         offered: None,
         order: 430,
         create: level_editor::add_post_process_volume,
-    }
-}
+    });
 
-inventory::submit! {
-    EnvironmentListing {
-        origin: pulsar_plugins::origin!(),
+    p.add(EnvironmentListing {
+        origin: p.origin(),
         class_name: "PostProcessVolumeComponent",
         label: "Post Process Volume",
         order: 30,
         create_entry: Some("environment_post_process_volume"),
-    }
+    });
 }

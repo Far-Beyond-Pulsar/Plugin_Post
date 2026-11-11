@@ -6,6 +6,9 @@ id = "pulsar.post"
 name = "Post-Process Volumes"
 description = "Post-process volumes and camera baselines: their components, rows and the renderer feature that blends them into the frame's post settings"
 enabled_by_default = true
+provides = [
+  { id = "pulsar.post.rows", kind = "buffer", members = ["post_process_volumes", "camera_postprocess"] },
+]
 requires = []
 
 # The plugin's root crate (the package in this directory): the one place it

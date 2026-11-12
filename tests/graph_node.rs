@@ -12,16 +12,18 @@ use std::sync::{Arc, Mutex};
 
 use engine_backend::subsystems::render::helio_renderer::{pipelines, render_features};
 use helio::{DebugDrawState, PassBuildContext, RendererConfig};
-use helio_graph_asset::{validate, GraphAsset, NodeInstance, PinKind};
+use helio_graph_asset::{GraphAsset, NodeInstance, PinKind, validate};
 use pulsar_scenedb::gpu::{EngineGpuContext, GpuMirrorHandle, SceneGpuConfig, SceneGpuStore};
 
 const PLUGIN: &str = "pulsar.post";
 
 /// What each node is: kind, the feature that registers it, and the pass type
 /// it builds (the end of the type's name), in default graph order.
-const NODES: &[(&str, &str, &str)] = &[
-    ("helio.pass.post_process_volume_blend", "helio.post_volumes", "PostProcessVolumeBlendPass"),
-];
+const NODES: &[(&str, &str, &str)] = &[(
+    "helio.pass.post_process_volume_blend",
+    "helio.post_volumes",
+    "PostProcessVolumeBlendPass",
+)];
 
 /// The plugin gate is process-wide state and a wgpu device is one at a time
 /// (Pulsar-Native#1647): every test takes this first.
@@ -74,7 +76,7 @@ fn registry() -> helio_graph_asset::NodeRegistry {
 
 /// The deferred preset's graph over the registry.
 fn default_asset(registry: &helio_graph_asset::NodeRegistry) -> GraphAsset {
-    helio_presets::graphs::deferred_graph_asset_for(registry, &configured())
+    helio_presets::graphs::deferred_graph_asset(registry)
 }
 
 /// Compiles `asset` and counts, per node of [`NODES`], the passes of its type
@@ -130,7 +132,10 @@ fn the_plugin_registers_its_nodes_in_the_default_graph_order() {
             .get(kind)
             .unwrap_or_else(|| panic!("{kind} is registered"));
         assert_eq!(registry.feature_of(kind), Some(*feature), "{kind}");
-        assert!(node.generated, "{kind}: pins come from what the pass declares");
+        assert!(
+            node.generated,
+            "{kind}: pins come from what the pass declares"
+        );
         assert!(node.params.iter().any(|p| p.key == "enabled"), "{kind}");
         let at = asset
             .nodes

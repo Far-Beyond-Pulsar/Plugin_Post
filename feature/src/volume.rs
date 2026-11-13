@@ -5,6 +5,7 @@
 //! post-settings contract (`helio_pass_postprocess`).
 
 use bytemuck::{Pod, Zeroable};
+use helio_lens_api::{GpuLensOverrides, GpuLensVolumeOverrides};
 use helio_pass_postprocess::{GpuPostProcessUniforms, PostProcessProperty, PostProcessSettings};
 
 // ── GpuPostProcessVolume ───────────────────────────────────────────────────────
@@ -29,13 +30,18 @@ pub struct GpuPostProcessVolume {
     // agree; the asserts below keep them that way.
     pub override_mask: [u32; 4],
     pub settings: GpuPostProcessUniforms,
+    /// The lens parameters this volume may override (`helio_lens_api`): the
+    /// lens plugin's blendable block, blended into the lens's overrides
+    /// rather than the post settings.
+    pub lens: GpuLensVolumeOverrides,
 }
 
 // WGSL places `settings` at 64 because GpuPostProcessUniforms aligns to 16.
 const _: () = assert!(std::mem::offset_of!(GpuPostProcessVolume, settings) == 64);
 // Storage-buffer array stride must match WGSL's, which rounds to the 16-byte alignment.
-// 64 (header) + 464 (settings) = 528.
-const _: () = assert!(std::mem::size_of::<GpuPostProcessVolume>() == 528);
+// 64 (header) + 368 (settings) + 16 (the lens block) = 448.
+const _: () = assert!(std::mem::offset_of!(GpuPostProcessVolume, lens) == 432);
+const _: () = assert!(std::mem::size_of::<GpuPostProcessVolume>() == 448);
 const _: () = assert!(std::mem::size_of::<GpuPostProcessVolume>() % 16 == 0);
 
 // ── PostProcessVolume descriptor (CPU-side) ────────────────────────────────────
@@ -50,6 +56,7 @@ pub struct PostProcessVolumeDescriptor {
     pub unbound: bool, // infinite volume (camera always inside)
     pub override_mask: [u32; 4],
     pub settings: PostProcessSettings,
+    pub lens: GpuLensVolumeOverrides,
 }
 
 impl Default for PostProcessVolumeDescriptor {
@@ -63,6 +70,7 @@ impl Default for PostProcessVolumeDescriptor {
             unbound: false,
             override_mask: PostProcessProperty::ALL,
             settings: PostProcessSettings::default(),
+            lens: GpuLensVolumeOverrides::default(),
         }
     }
 }
@@ -88,6 +96,7 @@ impl PostProcessVolumeDescriptor {
             unbound: self.unbound as u32,
             override_mask: self.override_mask,
             settings: self.settings.to_gpu(),
+            lens: self.lens,
         }
     }
 }
@@ -355,79 +364,6 @@ fn blend_properties(
             a.lut_platform = b.lut_platform;
         }
     }
-    if PostProcessProperty::contains(mask, 63) {
-        if t >= 0.5 {
-            a.lens_enabled = b.lens_enabled;
-        }
-    }
-    if PostProcessProperty::contains(mask, 64) {
-        if t >= 0.5 {
-            a.lens_quality = b.lens_quality;
-        }
-    }
-    if PostProcessProperty::contains(mask, 65) {
-        if t >= 0.5 {
-            a.lens_profile = b.lens_profile;
-        }
-    }
-    if PostProcessProperty::contains(mask, 66) {
-        if t >= 0.5 {
-            a.lens_ghost_count = b.lens_ghost_count;
-        }
-    }
-    if PostProcessProperty::contains(mask, 67) {
-        a.lens_intensity += (b.lens_intensity - a.lens_intensity) * t;
-    }
-    if PostProcessProperty::contains(mask, 68) {
-        a.lens_threshold += (b.lens_threshold - a.lens_threshold) * t;
-    }
-    if PostProcessProperty::contains(mask, 69) {
-        a.lens_soft_knee += (b.lens_soft_knee - a.lens_soft_knee) * t;
-    }
-    if PostProcessProperty::contains(mask, 70) {
-        a.lens_ghost_intensity += (b.lens_ghost_intensity - a.lens_ghost_intensity) * t;
-    }
-    if PostProcessProperty::contains(mask, 71) {
-        a.lens_halo_intensity += (b.lens_halo_intensity - a.lens_halo_intensity) * t;
-    }
-    if PostProcessProperty::contains(mask, 72) {
-        a.lens_glare_intensity += (b.lens_glare_intensity - a.lens_glare_intensity) * t;
-    }
-    if PostProcessProperty::contains(mask, 73) {
-        a.lens_streak_intensity += (b.lens_streak_intensity - a.lens_streak_intensity) * t;
-    }
-    if PostProcessProperty::contains(mask, 74) {
-        a.lens_dispersion += (b.lens_dispersion - a.lens_dispersion) * t;
-    }
-    if PostProcessProperty::contains(mask, 75) {
-        a.lens_starburst_intensity += (b.lens_starburst_intensity - a.lens_starburst_intensity) * t;
-    }
-    if PostProcessProperty::contains(mask, 76) {
-        a.lens_starburst_length += (b.lens_starburst_length - a.lens_starburst_length) * t;
-    }
-    if PostProcessProperty::contains(mask, 77) {
-        a.lens_coating_strength += (b.lens_coating_strength - a.lens_coating_strength) * t;
-    }
-    if PostProcessProperty::contains(mask, 78) {
-        a.lens_ghost_rim += (b.lens_ghost_rim - a.lens_ghost_rim) * t;
-    }
-    if PostProcessProperty::contains(mask, 79) {
-        a.lens_dirt_intensity += (b.lens_dirt_intensity - a.lens_dirt_intensity) * t;
-    }
-    if PostProcessProperty::contains(mask, 80) {
-        if t >= 0.5 {
-            a.lens_light_sources = b.lens_light_sources;
-        }
-    }
-    if PostProcessProperty::contains(mask, 81) {
-        a.lens_light_intensity += (b.lens_light_intensity - a.lens_light_intensity) * t;
-    }
-    if PostProcessProperty::contains(mask, 82) {
-        a.lens_field_margin += (b.lens_field_margin - a.lens_field_margin) * t;
-    }
-    if PostProcessProperty::contains(mask, 83) {
-        a.lens_response_time += (b.lens_response_time - a.lens_response_time) * t;
-    }
     if PostProcessProperty::contains(mask, 84) {
         a.local_exposure_highlight_contrast +=
             (b.local_exposure_highlight_contrast - a.local_exposure_highlight_contrast) * t;
@@ -441,6 +377,29 @@ fn blend_properties(
             (b.local_exposure_detail_strength - a.local_exposure_detail_strength) * t;
     }
     a
+}
+
+impl PostProcessBlender {
+    /// CPU reference for the GPU blend of the volumes' lens overrides: the
+    /// same volumes, order and weights as [`Self::blend_gpu`], blended with
+    /// the lens contract's rule (`helio_lens_api::GpuLensOverrides::blend`).
+    pub fn blend_lens(camera_pos: [f32; 3], volumes: &[GpuPostProcessVolume]) -> GpuLensOverrides {
+        let mut ordered: Vec<_> = volumes
+            .iter()
+            .filter(|v| {
+                v.priority.is_finite() && v.blend_weight.is_finite() && v.blend_weight > 0.0
+            })
+            .collect();
+        ordered.sort_by(|a, b| a.priority.partial_cmp(&b.priority).unwrap());
+        let mut result = GpuLensOverrides::IDENTITY;
+        for v in ordered {
+            let weight = volume_weight(camera_pos, v);
+            if weight > 0.0 {
+                result = result.blend(&v.lens, weight);
+            }
+        }
+        result
+    }
 }
 
 /// Maximum active volumes blended per frame. SceneDB buffers can be larger:

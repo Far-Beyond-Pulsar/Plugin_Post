@@ -32,6 +32,7 @@ helio-feature-api = { workspace = true }
 helio-scene-join = { workspace = true }
 helio-pass-postprocess = { workspace = true }
 helio-pass-post-volumes = { workspace = true }
+helio-lens-api = { workspace = true }
 
 [lints]
 workspace = true

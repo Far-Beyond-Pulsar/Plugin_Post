@@ -9,7 +9,10 @@ enabled_by_default = true
 provides = [
   { id = "pulsar.post.rows", kind = "buffer", members = ["post_process_volumes", "camera_postprocess"] },
 ]
-requires = []
+# Optional: volumes blend the lens's overrides; without the lens nothing reads them.
+requires = [
+  { id = "pulsar.lens.api", optional = true },
+]
 
 # The plugin's root crate (the package in this directory): the one place it
 # registers everything it contributes. A game links it without its `editor`

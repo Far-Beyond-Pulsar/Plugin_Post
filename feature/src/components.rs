@@ -26,11 +26,15 @@ pub struct PostProcessVolumeRow {
     pub override_mask_1: u32,
     pub override_mask_2: u32,
     pub override_mask_3: u32,
-    /// `helio_pass_postprocess::GpuPostProcessUniforms`'s raw bytes (464):
+    /// `helio_pass_postprocess::GpuPostProcessUniforms`'s raw bytes (368):
     /// the packed derive needs `pulsar_scenedb::Pod` per field, which
     /// `GpuPostProcessUniforms` lacks; `bytemuck::cast` between the outer
     /// structs only needs equal size -- see `layout_matches_gpu_abi`.
-    pub settings: [u32; 116],
+    pub settings: [u32; 92],
+    /// The lens parameters this volume overrides: `helio_lens_api`'s
+    /// blendable block, `GpuLensVolumeOverrides` as four words (`mask`,
+    /// focus distance, vignette strength, chromatic aberration amount).
+    pub lens: [u32; 4],
 }
 
 // SAFETY: a `#[repr(C)]` bytemuck `Pod` row: no padding bytes, any bit
@@ -42,8 +46,12 @@ unsafe impl pulsar_scenedb::Pod for PostProcessVolumeRow {}
 pub const POST_PROCESS_VOLUMES: helio_core::BufferContract<PostProcessVolumeRow> =
     helio_core::BufferContract::new("post_process_volumes");
 const _: () = assert!(
-    std::mem::size_of::<[u32; 116]>()
+    std::mem::size_of::<[u32; 92]>()
         == std::mem::size_of::<helio_pass_postprocess::GpuPostProcessUniforms>()
+);
+const _: () = assert!(
+    std::mem::size_of::<[u32; 4]>()
+        == std::mem::size_of::<helio_lens_api::GpuLensVolumeOverrides>()
 );
 
 impl From<crate::GpuPostProcessVolume> for PostProcessVolumeRow {
@@ -63,10 +71,8 @@ mod tests {
     #[test]
     fn settings_split_round_trips_every_byte() {
         let mut settings = helio_pass_postprocess::PostProcessSettings::default();
-        settings.lens_flare.enabled = true;
-        settings.lens_flare.ghost_count = 7;
-        settings.lens_flare.field_margin = 0.25;
         settings.bloom_intensity = 0.125;
+        settings.vignette_intensity = 0.75;
         let gpu = settings.to_gpu();
         let camera = CameraPostProcessRow::new(3, &settings);
         assert_eq!(
@@ -78,6 +84,12 @@ mod tests {
         let mut descriptor = crate::PostProcessVolumeDescriptor::default();
         descriptor.settings = settings;
         descriptor.override_mask = [1, 2, 3, 4];
+        descriptor.lens = helio_lens_api::GpuLensVolumeOverrides {
+            mask: helio_lens_api::OVERRIDE_FOCUS_DISTANCE,
+            focus_distance_m: 6.5,
+            vignette_strength: 0.4,
+            chromatic_aberration: 0.003,
+        };
         let row = PostProcessVolumeRow::from(descriptor.to_gpu());
         assert_eq!(
             [
@@ -90,6 +102,7 @@ mod tests {
         );
         let back = crate::GpuPostProcessVolume::from(row);
         assert_eq!(bytemuck::bytes_of(&back.settings), bytemuck::bytes_of(&gpu));
+        assert_eq!(back.lens, descriptor.lens);
     }
 
     #[test]
@@ -110,8 +123,7 @@ mod lifecycle_tests {
     use super::PostProcessVolumeRow;
 }
 
-/// Optional per-view baseline: the camera's own post-process settings,
-/// including lens flare. The first enabled row matching the camera's view id
+/// Optional per-view baseline: the camera's own post-process settings. The first enabled row matching the camera's view id
 /// (u32 bits of `jitter_frame.w`) wins; with none, the resolver's project
 /// defaults apply. PP volumes then override on top. Removing the component
 /// clears its packed row. `settings` holds the uniforms' bytes as
@@ -123,7 +135,7 @@ pub struct CameraPostProcessRow {
     pub enabled: u32,
     pub _pad0: u32,
     pub _pad1: u32,
-    pub settings: [u32; 116],
+    pub settings: [u32; 92],
 }
 
 // SAFETY: a `#[repr(C)]` bytemuck `Pod` row: no padding bytes, any bit
@@ -154,5 +166,5 @@ impl CameraPostProcessRow {
         bytemuck::cast(self.settings)
     }
 }
-const _: () = assert!(std::mem::size_of::<CameraPostProcessRow>() == 480);
+const _: () = assert!(std::mem::size_of::<CameraPostProcessRow>() == 384);
 const _: () = assert!(std::mem::offset_of!(CameraPostProcessRow, settings) == 16);

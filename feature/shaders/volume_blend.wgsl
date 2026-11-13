@@ -1,4 +1,5 @@
 //!use helio_prelude
+//!use lens_overrides
 // Post-process volume blending: the camera's baseline (its
 // `camera_postprocess` row, else the defaults) blended with every active
 // volume around it, written as the frame's post settings.
@@ -23,6 +24,9 @@ struct GpuPostProcessVolume {
     // vec2 here silently hid an 8-byte hole that #[repr(C)] did not reproduce.
     override_mask:  vec4<u32>,   // 48..64
     settings:       GpuPostProcessUniforms,  // 64
+    // The lens's blendable overrides (`helio_lens_api`), blended apart from the
+    // post settings into the lens's own contract.
+    lens:           LensVolumeOverrides,     // 432
 }
 
 struct CameraPostProcessComponent {
@@ -37,6 +41,8 @@ struct CameraPostProcessComponent {
 @group(0) @binding(1)  var<storage, read> cameras: array<Camera, 2>;
 @group(0) @binding(15) var<storage, read>      pp_volumes:   array<GpuPostProcessVolume>;
 @group(0) @binding(16) var<storage, read_write> blend_output: GpuPostProcessUniforms;
+// The blended lens overrides: `helio_lens_api::LENS_OVERRIDES`.
+@group(0) @binding(17) var<storage, read_write> lens_output: LensOverrides;
 
 // ── cs_volume_blend: GPU post-process volume blending ─────────────────────────
 // Single workgroup (1 thread) that reads all active volumes and blends them
@@ -101,27 +107,6 @@ fn blend_settings(base: GpuPostProcessUniforms, vol: GpuPostProcessUniforms, t: 
     if overridden(mask, 60u) { r.lut_generation = select(base.lut_generation, vol.lut_generation, t >= 0.5); }
     if overridden(mask, 61u) { r.lut_intensity = base.lut_intensity + (vol.lut_intensity - base.lut_intensity) * t; }
     if overridden(mask, 62u) { r.lut_platform = select(base.lut_platform, vol.lut_platform, t >= 0.5); }
-    if overridden(mask, 63u) { r.lens_enabled = select(base.lens_enabled, vol.lens_enabled, t >= 0.5); }
-    if overridden(mask, 64u) { r.lens_quality = select(base.lens_quality, vol.lens_quality, t >= 0.5); }
-    if overridden(mask, 65u) { r.lens_profile = select(base.lens_profile, vol.lens_profile, t >= 0.5); }
-    if overridden(mask, 66u) { r.lens_ghost_count = select(base.lens_ghost_count, vol.lens_ghost_count, t >= 0.5); }
-    if overridden(mask, 67u) { r.lens_intensity = base.lens_intensity + (vol.lens_intensity - base.lens_intensity) * t; }
-    if overridden(mask, 68u) { r.lens_threshold = base.lens_threshold + (vol.lens_threshold - base.lens_threshold) * t; }
-    if overridden(mask, 69u) { r.lens_soft_knee = base.lens_soft_knee + (vol.lens_soft_knee - base.lens_soft_knee) * t; }
-    if overridden(mask, 70u) { r.lens_ghost_intensity = base.lens_ghost_intensity + (vol.lens_ghost_intensity - base.lens_ghost_intensity) * t; }
-    if overridden(mask, 71u) { r.lens_halo_intensity = base.lens_halo_intensity + (vol.lens_halo_intensity - base.lens_halo_intensity) * t; }
-    if overridden(mask, 72u) { r.lens_glare_intensity = base.lens_glare_intensity + (vol.lens_glare_intensity - base.lens_glare_intensity) * t; }
-    if overridden(mask, 73u) { r.lens_streak_intensity = base.lens_streak_intensity + (vol.lens_streak_intensity - base.lens_streak_intensity) * t; }
-    if overridden(mask, 74u) { r.lens_dispersion = base.lens_dispersion + (vol.lens_dispersion - base.lens_dispersion) * t; }
-    if overridden(mask, 75u) { r.lens_starburst_intensity = base.lens_starburst_intensity + (vol.lens_starburst_intensity - base.lens_starburst_intensity) * t; }
-    if overridden(mask, 76u) { r.lens_starburst_length = base.lens_starburst_length + (vol.lens_starburst_length - base.lens_starburst_length) * t; }
-    if overridden(mask, 77u) { r.lens_coating_strength = base.lens_coating_strength + (vol.lens_coating_strength - base.lens_coating_strength) * t; }
-    if overridden(mask, 78u) { r.lens_ghost_rim = base.lens_ghost_rim + (vol.lens_ghost_rim - base.lens_ghost_rim) * t; }
-    if overridden(mask, 79u) { r.lens_dirt_intensity = base.lens_dirt_intensity + (vol.lens_dirt_intensity - base.lens_dirt_intensity) * t; }
-    if overridden(mask, 80u) { r.lens_light_sources = select(base.lens_light_sources, vol.lens_light_sources, t >= 0.5); }
-    if overridden(mask, 81u) { r.lens_light_intensity = base.lens_light_intensity + (vol.lens_light_intensity - base.lens_light_intensity) * t; }
-    if overridden(mask, 82u) { r.lens_field_margin = base.lens_field_margin + (vol.lens_field_margin - base.lens_field_margin) * t; }
-    if overridden(mask, 83u) { r.lens_response_time = base.lens_response_time + (vol.lens_response_time - base.lens_response_time) * t; }
     if overridden(mask, 84u) { r.local_exposure_highlight_contrast = base.local_exposure_highlight_contrast + (vol.local_exposure_highlight_contrast - base.local_exposure_highlight_contrast) * t; }
     if overridden(mask, 85u) { r.local_exposure_shadow_contrast = base.local_exposure_shadow_contrast + (vol.local_exposure_shadow_contrast - base.local_exposure_shadow_contrast) * t; }
     if overridden(mask, 86u) { r.local_exposure_detail_strength = base.local_exposure_detail_strength + (vol.local_exposure_detail_strength - base.local_exposure_detail_strength) * t; }
@@ -197,13 +182,18 @@ fn cs_volume_blend(@builtin(local_invocation_index) lid: u32) {
     }
 
     var result = baseline;
+    var lens_blend = lens_overrides_identity();
     let position = cameras[0].position_near.xyz;
     for (var n = 0u; n < count; n++) {
         // Bounds in the frame's space, as the environment join writes them.
         let v = pp_volumes[active_rows[n]];
         let weight = volume_weight(position, v);
-        if weight > 0.0 { result = blend_settings(result, v.settings, weight, v.override_mask); }
+        if weight > 0.0 {
+            result = blend_settings(result, v.settings, weight, v.override_mask);
+            lens_blend = lens_overrides_blend(lens_blend, v.lens, weight);
+        }
     }
     blend_output = result;
+    lens_output = lens_blend;
 }
 

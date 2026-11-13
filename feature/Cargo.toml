@@ -23,6 +23,8 @@ helio-core = { workspace = true }
 helio-feature-api = { workspace = true }
 helio-frame-api = { workspace = true }
 helio-pass-postprocess = { workspace = true }
+# The lens's blendable overrides the volumes carry and blend.
+helio-lens-api = { workspace = true }
 wgpu = { workspace = true }
 bytemuck = { workspace = true, features = ["derive"] }
 pulsar_scenedb = { workspace = true }

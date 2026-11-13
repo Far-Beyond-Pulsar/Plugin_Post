@@ -12,10 +12,11 @@ pub fn shader(device: &wgpu::Device) -> wgpu::ShaderModule {
         "PostProcess Resolver",
         helio_core::include_wgsl!("../shaders/volume_blend.wgsl"),
     );
-    helio_core::shader::module(
+    helio_core::shader::module_with(
         device,
         "PostProcess Resolver",
         &helio_pass_postprocess::with_post_settings(&source),
+        &[helio_lens_api::OVERRIDES_SNIPPET],
     )
 }
 
@@ -27,6 +28,9 @@ pub struct PostProcessVolumeBlendPass {
     default_settings: helio_pass_postprocess::PostProcessSettings,
     blend_output_buf: wgpu::Buffer,
     resolved: wgpu::Buffer,
+    /// The volumes' blended lens overrides, published as
+    /// [`helio_lens_api::LENS_OVERRIDES`].
+    lens_overrides: wgpu::Buffer,
     fallback_pp_volumes: wgpu::Buffer,
     fallback_cameras: wgpu::Buffer,
     bind_group: Option<wgpu::BindGroup>,
@@ -186,6 +190,7 @@ impl PostProcessVolumeBlendPass {
                 entry(1, wgpu::BufferBindingType::Storage { read_only: true }),
                 entry(15, wgpu::BufferBindingType::Storage { read_only: true }),
                 entry(16, wgpu::BufferBindingType::Storage { read_only: false }),
+                entry(17, wgpu::BufferBindingType::Storage { read_only: false }),
                 entry(20, wgpu::BufferBindingType::Storage { read_only: true }),
             ],
         });
@@ -235,6 +240,11 @@ impl PostProcessVolumeBlendPass {
                 wgpu::BufferUsages::UNIFORM
                     | wgpu::BufferUsages::COPY_DST
                     | wgpu::BufferUsages::COPY_SRC,
+            ),
+            lens_overrides: buffer(
+                "PostProcess Lens Overrides",
+                std::mem::size_of::<helio_lens_api::GpuLensOverrides>() as u64,
+                wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
             ),
             fallback_pp_volumes: buffer(
                 "PostProcess Empty Volumes",
@@ -295,9 +305,10 @@ impl RenderPass for PostProcessVolumeBlendPass {
     }
     fn declare_resources(&self, builder: &mut ResourceBuilder) {
         builder.write_buffer(POST_SETTINGS);
+        builder.write_buffer(helio_lens_api::LENS_OVERRIDES);
     }
     fn writes(&self) -> &'static [&'static str] {
-        &[POST_SETTINGS]
+        &[POST_SETTINGS, helio_lens_api::LENS_OVERRIDES]
     }
     fn render_pass_descriptor<'a>(
         &'a self,
@@ -359,6 +370,10 @@ impl RenderPass for PostProcessVolumeBlendPass {
                         resource: self.blend_output_buf.as_entire_binding(),
                     },
                     wgpu::BindGroupEntry {
+                        binding: 17,
+                        resource: self.lens_overrides.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
                         binding: 20,
                         resource: cameras.as_entire_binding(),
                     },
@@ -388,6 +403,13 @@ impl RenderPass for PostProcessVolumeBlendPass {
     fn publish<'a>(&self, frame: &mut helio_core::ResourceRegistry<'a>) {
         let buffer: &'a wgpu::Buffer = unsafe { std::mem::transmute(&self.resolved) };
         frame.write(ResourceKey::new(POST_SETTINGS), buffer, self.name());
+        // SAFETY: as for `resolved`.
+        let lens: &'a wgpu::Buffer = unsafe { std::mem::transmute(&self.lens_overrides) };
+        frame.write(
+            ResourceKey::new(helio_lens_api::LENS_OVERRIDES),
+            lens,
+            self.name(),
+        );
         frame.write(
             ResourceKey::new(BLOOM_MAYBE_ACTIVE),
             self.bloom.maybe_active,

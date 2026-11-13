@@ -17,6 +17,8 @@ editor = ["dep:post_editor", "dep:ui_level_editor"]
 pulsar_plugins = { workspace = true }
 # The plugin's crates.
 post_component = { workspace = true }
+# Level-record migrations (`pulsar_class::records`).
+pulsar_class = { workspace = true }
 post_editor = { workspace = true, optional = true }
 # The engine seams the plugin registers into.
 engine_backend = { path = "../../../crates/core/engine_backend", default-features = false, features = ["render"] }

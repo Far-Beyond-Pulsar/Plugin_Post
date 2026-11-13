@@ -19,11 +19,12 @@
 //! feature, in one place.
 
 pub mod camera;
-pub mod lens_flare;
+pub mod lens_overrides;
+pub mod records;
 pub mod volume;
 
 pub use camera::*;
-pub use lens_flare::*;
+pub use lens_overrides::*;
 pub use volume::*;
 
 use pulsar_scenedb::gpu::{GpuMirrorHandle, SceneGpuStore};
@@ -47,8 +48,36 @@ pub struct PostProcessVolumeSourceRow {
     pub params: [u32; 4],
     #[gpu]
     pub mask: [u32; 4],
+    /// The settings' 92 words (`helio_pass_postprocess::GpuPostProcessUniforms`'s
+    /// bytes) in the array shapes reflection registers: eleven of eight and one
+    /// of four.
     #[gpu]
-    pub settings: [u32; 116],
+    pub settings_0: [u32; 8],
+    #[gpu]
+    pub settings_1: [u32; 8],
+    #[gpu]
+    pub settings_2: [u32; 8],
+    #[gpu]
+    pub settings_3: [u32; 8],
+    #[gpu]
+    pub settings_4: [u32; 8],
+    #[gpu]
+    pub settings_5: [u32; 8],
+    #[gpu]
+    pub settings_6: [u32; 8],
+    #[gpu]
+    pub settings_7: [u32; 8],
+    #[gpu]
+    pub settings_8: [u32; 8],
+    #[gpu]
+    pub settings_9: [u32; 8],
+    #[gpu]
+    pub settings_10: [u32; 8],
+    #[gpu]
+    pub settings_11: [u32; 4],
+    /// The volume's lens overrides (`helio_lens_api::GpuLensVolumeOverrides`).
+    #[gpu]
+    pub lens: [u32; 4],
 }
 
 /// A camera's post-process baseline (`CameraPostProcessRow`, bit for bit:
@@ -60,8 +89,33 @@ pub struct PostProcessVolumeSourceRow {
 pub struct CameraPostProcessSourceRow {
     #[gpu]
     pub header: [u32; 4],
+    /// The settings' 92 words (`helio_pass_postprocess::GpuPostProcessUniforms`'s
+    /// bytes) in the array shapes reflection registers: eleven of eight and one
+    /// of four.
     #[gpu]
-    pub settings: [u32; 116],
+    pub settings_0: [u32; 8],
+    #[gpu]
+    pub settings_1: [u32; 8],
+    #[gpu]
+    pub settings_2: [u32; 8],
+    #[gpu]
+    pub settings_3: [u32; 8],
+    #[gpu]
+    pub settings_4: [u32; 8],
+    #[gpu]
+    pub settings_5: [u32; 8],
+    #[gpu]
+    pub settings_6: [u32; 8],
+    #[gpu]
+    pub settings_7: [u32; 8],
+    #[gpu]
+    pub settings_8: [u32; 8],
+    #[gpu]
+    pub settings_9: [u32; 8],
+    #[gpu]
+    pub settings_10: [u32; 8],
+    #[gpu]
+    pub settings_11: [u32; 4],
 }
 
 /// `bytes`, which must be exactly a `T`, as a `T`.
@@ -180,15 +234,15 @@ mod tests {
 
     #[test]
     fn rows_have_the_documented_word_counts() {
-        assert_eq!(std::mem::size_of::<PostProcessVolumeSourceRow>(), 128 * 4);
-        assert_eq!(std::mem::size_of::<CameraPostProcessSourceRow>(), 120 * 4);
+        assert_eq!(std::mem::size_of::<PostProcessVolumeSourceRow>(), 108 * 4);
+        assert_eq!(std::mem::size_of::<CameraPostProcessSourceRow>(), 96 * 4);
         assert_eq!(
             std::mem::size_of::<helio_pass_post_volumes::PostProcessVolumeRow>(),
-            132 * 4
+            112 * 4
         );
         assert_eq!(
             std::mem::size_of::<helio_pass_post_volumes::CameraPostProcessRow>(),
-            120 * 4
+            96 * 4
         );
         assert_eq!(
             std::mem::size_of::<PostProcessVolumeSourceRow>() as u64,

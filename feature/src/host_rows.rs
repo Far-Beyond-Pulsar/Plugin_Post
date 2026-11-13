@@ -38,18 +38,46 @@ pub struct PostProcessVolumeComponent {
     pub override_mask_2: u32,
     #[gpu]
     pub override_mask_3: u32,
-    /// `crate::GpuPostProcessUniforms`'s raw bytes (464): the packed derive
+    /// `crate::GpuPostProcessUniforms`'s raw bytes (368): the packed derive
     /// needs `pulsar_scenedb::Pod` per field, which `GpuPostProcessUniforms`
     /// lacks; `bytemuck::cast` between the outer structs only needs equal
     /// size -- see `layout_matches_gpu_abi`.
+    /// The settings' 92 words (`helio_pass_postprocess::GpuPostProcessUniforms`'s
+    /// bytes) in the array shapes reflection registers: eleven of eight and one
+    /// of four.
     #[gpu]
-    pub settings: [u32; 116],
+    pub settings_0: [u32; 8],
+    #[gpu]
+    pub settings_1: [u32; 8],
+    #[gpu]
+    pub settings_2: [u32; 8],
+    #[gpu]
+    pub settings_3: [u32; 8],
+    #[gpu]
+    pub settings_4: [u32; 8],
+    #[gpu]
+    pub settings_5: [u32; 8],
+    #[gpu]
+    pub settings_6: [u32; 8],
+    #[gpu]
+    pub settings_7: [u32; 8],
+    #[gpu]
+    pub settings_8: [u32; 8],
+    #[gpu]
+    pub settings_9: [u32; 8],
+    #[gpu]
+    pub settings_10: [u32; 8],
+    #[gpu]
+    pub settings_11: [u32; 4],
+    /// The lens parameters the volume overrides (`helio_lens_api`'s
+    /// `GpuLensVolumeOverrides` as four words).
+    #[gpu]
+    pub lens: [u32; 4],
 }
 
-same_layout!(PostProcessVolumeComponent, crate::PostProcessVolumeRow, crate::POST_PROCESS_VOLUMES, "post_process_volumes"; bounds_min, bounds_max, priority, blend_radius, blend_weight, unbound, override_mask_0, override_mask_1, override_mask_2, override_mask_3, settings);
+same_layout!(PostProcessVolumeComponent, crate::PostProcessVolumeRow, crate::POST_PROCESS_VOLUMES, "post_process_volumes"; bounds_min, bounds_max, priority, blend_radius, blend_weight, unbound, override_mask_0, override_mask_1, override_mask_2, override_mask_3, lens);
 
-/// Optional per-view baseline: the camera's own post-process settings,
-/// including lens flare. The first enabled row matching the camera's view id
+/// Optional per-view baseline: the camera's own post-process settings. The first enabled row matching the camera's view id
 /// (u32 bits of `jitter_frame.w`) wins; with none, the resolver's project
 /// defaults apply. PP volumes then override on top. Removing the component
 /// clears its packed row. `settings` holds the uniforms' bytes as
@@ -66,11 +94,36 @@ pub struct CameraPostProcessComponent {
     pub _pad0: u32,
     #[gpu]
     pub _pad1: u32,
+    /// The settings' 92 words (`helio_pass_postprocess::GpuPostProcessUniforms`'s
+    /// bytes) in the array shapes reflection registers: eleven of eight and one
+    /// of four.
     #[gpu]
-    pub settings: [u32; 116],
+    pub settings_0: [u32; 8],
+    #[gpu]
+    pub settings_1: [u32; 8],
+    #[gpu]
+    pub settings_2: [u32; 8],
+    #[gpu]
+    pub settings_3: [u32; 8],
+    #[gpu]
+    pub settings_4: [u32; 8],
+    #[gpu]
+    pub settings_5: [u32; 8],
+    #[gpu]
+    pub settings_6: [u32; 8],
+    #[gpu]
+    pub settings_7: [u32; 8],
+    #[gpu]
+    pub settings_8: [u32; 8],
+    #[gpu]
+    pub settings_9: [u32; 8],
+    #[gpu]
+    pub settings_10: [u32; 8],
+    #[gpu]
+    pub settings_11: [u32; 4],
 }
 
-same_layout!(CameraPostProcessComponent, crate::CameraPostProcessRow, crate::CAMERA_POSTPROCESS, "camera_postprocess"; view_id, enabled, _pad0, _pad1, settings);
+same_layout!(CameraPostProcessComponent, crate::CameraPostProcessRow, crate::CAMERA_POSTPROCESS, "camera_postprocess"; view_id, enabled, _pad0, _pad1);
 
 impl From<crate::GpuPostProcessVolume> for PostProcessVolumeComponent {
     fn from(value: crate::GpuPostProcessVolume) -> Self {

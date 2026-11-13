@@ -32,6 +32,21 @@ pub(crate) fn build(p: &mut pulsar_plugins::PluginBuilder) {
         features: post_component::render_features,
         configure: |config| config,
     });
+
+    // ── Level records ───────────────────────────────────────────────────────
+
+    // The lens left the post settings: a camera baseline's flare moves to the
+    // camera's lens, a volume's flare and its override switch are dropped (a
+    // volume overrides only the lens's artistic parameters now).
+    p.add(pulsar_class::records::RecordMigrationRegistration {
+        origin: p.origin(),
+        name: "post.lens_flare_to_lens",
+        description: post_component::records::LENS_FLARE_MOVED,
+        entries: Some(post_component::records::move_lens_flare),
+        from_props: None,
+        stale_props: &[],
+        retired_fields: &[],
+    });
 }
 
 #[cfg(test)]

@@ -3,7 +3,7 @@
 //! placed by the plugin's row join with the owner's transform; camera
 //! settings reuse PostProcessSettingsProps.
 
-use crate::lens_flare::LensFlareProps;
+use crate::lens_overrides::LensOverridesProps;
 use engine_class_derive::{engine_class, world_component};
 use helio_pass_post_volumes::PostProcessVolumeDescriptor;
 use helio_pass_postprocess::{ExposureMode as HelioExposureMode, PostProcessSettings};
@@ -66,7 +66,7 @@ pub enum HdrOutputMode {
 #[category("Blend Weights", category_color = "#8F8F8F")]
 #[category("HDR Output", category_color = "#D18F6F")]
 #[category("Advanced Color Grading", category_color = "#2FA88A")]
-#[category("Lens Flare", category_color = "#E0B040")]
+#[category("Lens", category_color = "#E0B040")]
 #[category("Overrides", category_color = "#8F8F8F")]
 pub struct PostProcessVolumeComponent {
     #[property]
@@ -97,6 +97,13 @@ pub struct PostProcessVolumeComponent {
     #[serde(flatten)]
     pub overrides: PostProcessOverrides,
 
+    /// The lens parameters this volume may override: only the lens's
+    /// artistic, blendable ones (focus distance, vignette strength, chromatic
+    /// aberration amount). The camera's lens prescription never blends.
+    #[sub_props]
+    #[serde(flatten)]
+    pub lens: LensOverridesProps,
+
     #[sub_props]
     #[serde(flatten)]
     pub settings: PostProcessSettingsProps,
@@ -115,6 +122,7 @@ impl Default for PostProcessVolumeComponent {
             blend_weight: 1.0,
             unbound: false,
             overrides: PostProcessOverrides::default(),
+            lens: LensOverridesProps::default(),
             settings: PostProcessSettingsProps::default(),
         }
     }
@@ -123,9 +131,9 @@ impl Default for PostProcessVolumeComponent {
 /// Per-group override switches, packed into `PostProcessProperty` bits.
 ///
 /// Groups that predate override masks default on, so existing volumes keep
-/// replacing them exactly as before. Lens flare and local exposure default
-/// off: a volume placed for grading or fog must not silently replace the
-/// camera's lens or local exposure.
+/// replacing them exactly as before. Local exposure defaults off: a volume
+/// placed for grading or fog must not silently replace the camera's local
+/// exposure. The lens's overrides are `LensOverridesProps`, all off by default.
 #[engine_class(no_register, clone, debug, serialize, deserialize)]
 #[serde(default)]
 #[category("Overrides", category_color = "#8F8F8F")]
@@ -149,8 +157,6 @@ pub struct PostProcessOverrides {
     pub override_motion_blur: bool,
     #[property(category = "Overrides")]
     pub override_hdr_output: bool,
-    #[property(category = "Overrides")]
-    pub override_lens_flare: bool,
 }
 
 impl Default for PostProcessOverrides {
@@ -165,7 +171,6 @@ impl Default for PostProcessOverrides {
             override_film_grain: true,
             override_motion_blur: true,
             override_hdr_output: true,
-            override_lens_flare: false,
         }
     }
 }
@@ -173,7 +178,7 @@ impl Default for PostProcessOverrides {
 impl PostProcessOverrides {
     pub fn mask(&self) -> [u32; 4] {
         use helio_pass_postprocess::PostProcessProperty as P;
-        let groups: [(bool, &[usize]); 10] = [
+        let groups: [(bool, &[usize]); 9] = [
             (
                 self.override_exposure,
                 &[
@@ -271,32 +276,6 @@ impl PostProcessOverrides {
                 self.override_hdr_output,
                 &[P::HDR_OUTPUT_MODE, P::HDR_MAX_NITS, P::HDR_UI_BRIGHTNESS],
             ),
-            (
-                self.override_lens_flare,
-                &[
-                    P::LENS_ENABLED,
-                    P::LENS_QUALITY,
-                    P::LENS_PROFILE,
-                    P::LENS_GHOST_COUNT,
-                    P::LENS_INTENSITY,
-                    P::LENS_THRESHOLD,
-                    P::LENS_SOFT_KNEE,
-                    P::LENS_GHOST_INTENSITY,
-                    P::LENS_HALO_INTENSITY,
-                    P::LENS_GLARE_INTENSITY,
-                    P::LENS_STREAK_INTENSITY,
-                    P::LENS_DISPERSION,
-                    P::LENS_STARBURST_INTENSITY,
-                    P::LENS_STARBURST_LENGTH,
-                    P::LENS_COATING_STRENGTH,
-                    P::LENS_GHOST_RIM,
-                    P::LENS_DIRT_INTENSITY,
-                    P::LENS_LIGHT_SOURCES,
-                    P::LENS_LIGHT_INTENSITY,
-                    P::LENS_FIELD_MARGIN,
-                    P::LENS_RESPONSE_TIME,
-                ],
-            ),
         ];
         let mut mask = P::NONE;
         for (enabled, properties) in groups {
@@ -324,7 +303,6 @@ impl PostProcessOverrides {
 #[category("Blend Weights", category_color = "#8F8F8F")]
 #[category("HDR Output", category_color = "#D18F6F")]
 #[category("Advanced Color Grading", category_color = "#2FA88A")]
-#[category("Lens Flare", category_color = "#E0B040")]
 pub struct PostProcessSettingsProps {
     // ── Exposure ────────────────────────────────────────────────────────
     #[property(category = "Exposure")]
@@ -470,9 +448,6 @@ pub struct PostProcessSettingsProps {
     pub hue_shift: f32,
     #[property(min = 0.0, max = 1.0, step = 0.01, category = "Advanced Color Grading")]
     pub lut_intensity: f32,
-    /// Camera optics, evaluated after medium compositing and exposure.
-    #[property(category = "Lens Flare")]
-    pub lens_flare: LensFlareProps,
 }
 
 impl Default for PostProcessSettingsProps {
@@ -533,7 +508,6 @@ impl Default for PostProcessSettingsProps {
             shadow_highlight_balance: 0.5,
             hue_shift: 0.0,
             lut_intensity: 1.0,
-            lens_flare: LensFlareProps::default(),
         }
     }
 }
@@ -616,7 +590,6 @@ impl PostProcessSettingsProps {
             lut_generation: 0,
             lut_intensity: self.lut_intensity,
             lut_platform: 0,
-            lens_flare: self.lens_flare.to_settings(),
         }
     }
 }
@@ -635,6 +608,7 @@ impl PostProcessVolumeComponent {
             unbound: self.unbound,
             override_mask: self.overrides.mask(),
             settings: self.settings.to_settings(),
+            lens: self.lens.to_block(),
         }
     }
 }

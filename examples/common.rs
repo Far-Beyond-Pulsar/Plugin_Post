@@ -395,6 +395,8 @@ pub fn features() -> helio_feature_api::FeatureSet {
         // The lighting plugins' (Helio's presets list neither).
         .with(helio_pass_sky::SkyFeature)
         .with(helio_pass_gi::GiFeature)
+        // Baked lighting: adds its nodes once a scene is baked.
+        .extended(&helio_bake_host::features())
 }
 
 /// The deferred preset with the plugin's features.

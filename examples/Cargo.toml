@@ -22,7 +22,7 @@ env_logger = "0.11"
 glam = { workspace = true }
 helio = { workspace = true }
 helio-bake = { workspace = true }
-helio-components = { workspace = true, features = ["bake"] }
+helio-bake-host = { workspace = true }
 helio-feature-api = { workspace = true }
 helio-mesh-api = { workspace = true }
 helio-pass-debug-overlay = { workspace = true }

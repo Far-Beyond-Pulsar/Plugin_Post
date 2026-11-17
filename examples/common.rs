@@ -3,7 +3,7 @@
 #![allow(dead_code)]
 
 use glam::{Mat4, Vec3};
-use helio::{Renderer, RendererBuilder, RendererConfig, SceneDbHandle};
+use helio::SceneDbHandle;
 use helio_light_api::{GpuLight, LightType};
 use helio_light_host::LightComponent;
 #[allow(unused_imports)]

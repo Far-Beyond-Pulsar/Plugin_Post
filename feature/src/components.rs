@@ -119,9 +119,7 @@ mod tests {
 }
 
 #[cfg(test)]
-mod lifecycle_tests {
-    use super::PostProcessVolumeRow;
-}
+mod lifecycle_tests {}
 
 /// Optional per-view baseline: the camera's own post-process settings. The first enabled row matching the camera's view id
 /// (u32 bits of `jitter_frame.w`) wins; with none, the resolver's project

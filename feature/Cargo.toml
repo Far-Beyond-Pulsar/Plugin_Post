@@ -3,7 +3,7 @@ name = "helio-pass-post-volumes"
 version = "0.1.0"
 edition = "2021"
 description = "Post-process volumes as a Helio feature: the camera and volume rows and the pass that blends them into the frame's post settings, which the tone map reads."
-license = "MIT OR Apache-2.0"
+license = "MPL-2.0"
 
 [features]
 default = ["gpu"]
